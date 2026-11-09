@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ORION-1 Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --void:#0A0C10;
+    --panel:#12151C;
+    --panel-2:#161A23;
+    --border:#232833;
+    --text:#EDEFF3;
+    --muted:#8890A0;
+    --teal:#4FE0C2;
+    --amber:#F5A623;
+    --coral:#FF6B5D;
+    --violet:#9B8CFF;
+    --grid:#1A1E27;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--void);color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Space Grotesk',sans-serif;}
+
+  #app{max-width:1440px;margin:0 auto;padding:18px 22px 40px;}
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap;gap:12px;}
+  .mission-id{display:flex;align-items:baseline;gap:12px;}
+  .mission-id h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;
+    letter-spacing:0.5px;margin:0;}
+  .mission-id .sub{color:var(--muted);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;}
+  .badge{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 9px;border-radius:3px;
+    border:1px solid var(--border);color:var(--muted);letter-spacing:0.5px;display:flex;align-items:center;gap:5px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);}
+  .dot.warn{background:var(--amber);} .dot.crit{background:var(--coral);}
+  .badge.nominal{color:var(--teal);border-color:#1c4f45;}
+  .badge.warn{color:var(--amber);border-color:#5a4419;}
+  .badge.crit{color:var(--coral);border-color:#5a2420;}
+  .clock{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:1px;}
+
+  /* ---------- transport controls ---------- */
+  .transport{display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin-bottom:16px;}
+  .transport button{background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    width:32px;height:32px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;
+    align-items:center;justify-content:center;}
+  .transport button:hover{border-color:var(--teal);color:var(--teal);}
+  .transport input[type=range]{flex:1;accent-color:var(--teal);}
+  .transport select{background:var(--panel-2);color:var(--text);border:1px solid var(--border);
+    border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:4px 6px;}
+  .scrub-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);min-width:150px;text-align:right;}
+
+  /* ---------- layout grid ---------- */
+  .row1{display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:14px;margin-bottom:14px;}
+  .row2{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;}
+  .row3{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;}
+  .row4{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;}
+  @media (max-width:1050px){.row1{grid-template-columns:1fr;} .row4{grid-template-columns:1fr;}}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px 16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--muted);margin:0 0 12px 0;display:flex;justify-content:space-between;align-items:center;}
+  .panel h2 .tag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);
+    border:1px solid var(--border);padding:1px 6px;border-radius:3px;text-transform:none;letter-spacing:0;}
+
+  /* ---------- vitals gauges ---------- */
+  .vitals-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .gauge{text-align:center;}
+  .gauge .val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:6px;}
+  .gauge .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+  .stat-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row .k{color:var(--muted);}
+
+  /* ---------- timeline ---------- */
+  #timelineWrap{position:relative;height:64px;cursor:pointer;}
+  #timelineCanvas{width:100%;height:44px;display:block;border-radius:4px;overflow:hidden;}
+  #timelinePlayhead{position:absolute;top:0;bottom:16px;width:2px;background:var(--text);pointer-events:none;}
+  .legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;}
+  .legend span{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+  /* ---------- log ---------- */
+  #log{height:200px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.7;}
+  #log .entry{border-bottom:1px solid var(--grid);padding:3px 0;color:var(--muted);}
+  #log .entry .t{color:var(--text);margin-right:8px;}
+  #log .entry.ai{color:var(--violet);}
+  #log .entry.anomaly{color:var(--coral);}
+  #log .entry.dl{color:var(--amber);}
+
+  canvas{background:transparent;}
+  svg text{font-family:'IBM Plex Mono',monospace;fill:var(--muted);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="mission-id">
+      <h1 id="missionName">ORION-1</h1>
+      <span class="sub">Autonomous Mission Planning &amp; Digital Twin</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:18px;">
+      <div class="badges" id="statusBadges"></div>
+      <div class="clock mono" id="clockDisplay">T+00:00:00</div>
+    </div>
+  </header>
+
+  <div class="transport">
+    <button id="btnPlay">&#9654;</button>
+    <input type="range" id="scrubber" min="0" max="0" value="0">
+    <select id="speedSelect">
+      <option value="1">1x</option>
+      <option value="4" selected>4x</option>
+      <option value="12">12x</option>
+      <option value="40">40x</option>
+    </select>
+    <div class="scrub-label" id="scrubLabel">step 0 / 0</div>
+  </div>
+
+  <div class="row1">
+    <div class="panel">
+      <h2>Orbit <span class="tag" id="planFilterTag">two-body</span></h2>
+      <svg id="orbitRing" viewBox="0 0 260 260" width="100%"></svg>
+    </div>
+    <div class="panel">
+      <h2>Ground Track</h2>
+      <svg id="groundTrack" viewBox="0 0 720 360" width="100%"></svg>
+    </div>
+    <div class="panel">
+      <h2>Spacecraft Vitals</h2>
+      <div class="vitals-grid">
+        <div class="gauge"><svg width="90" height="90" viewBox="0 0 90 90" id="gaugeBattery"></svg>
+          <div class="val" id="valBattery">--%</div><div class="lbl">Battery</div></div>
+        <div class="gauge"><svg width="90" height="90" viewBox="0 0 90 90" id="gaugeStorage"></svg>
+          <div class="val" id="valStorage">--%</div><div class="lbl">Storage</div></div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="stat-row"><span class="k">Temperature</span><span class="mono" id="valTemp">-- C</span></div>
+        <div class="stat-row"><span class="k">Solar generation</span><span class="mono" id="valSolar">-- W</span></div>
+        <div class="stat-row"><span class="k">Activity</span><span class="mono" id="valActivity">--</span></div>
+        <div class="stat-row"><span class="k">Comm link</span><span class="mono" id="valComm">--</span></div>
+        <div class="stat-row"><span class="k">Eclipse</span><span class="mono" id="valEclipse">--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="panel">
+      <h2>Telemetry <span class="tag" id="telemetryTag">battery / thermal / power</span></h2>
+      <canvas id="telemetryChart" height="72"></canvas>
+    </div>
+  </div>
+
+  <div class="row3">
+    <div class="panel">
+      <h2>Mission Timeline</h2>
+      <div id="timelineWrap">
+        <canvas id="timelineCanvas"></canvas>
+        <div id="timelinePlayhead"></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#3A4150"></i>IDLE / CHARGE</span>
+        <span><i style="background:var(--violet)"></i>IMAGE</span>
+        <span><i style="background:var(--amber)"></i>DOWNLINK</span>
+        <span><i style="background:var(--coral)"></i>SAFE MODE</span>
+        <span><i style="background:#FF3B30;border-radius:50%;"></i>Anomaly</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row4">
+    <div class="panel">
+      <h2>AI &amp; Mission Event Log</h2>
+      <div id="log"></div>
+    </div>
+    <div class="panel">
+      <h2>Mission Summary</h2>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = __ORION_DATA__;
+
+const steps = DATA.steps;
+const meta = DATA.meta;
+const opportunities = DATA.opportunities;
+const groundStations = DATA.ground_stations;
+const imagingTargets = DATA.imaging_targets;
+
+let idx = 0;
+let playing = false;
+let timer = null;
+
+const ACT_COLOR = {
+  IDLE:'#3A4150', CHARGE:'#2E5F55', IMAGE:'#9B8CFF', DOWNLINK:'#F5A623', SAFE_MODE:'#FF6B5D'
+};
+
+// ---------------- header / badges ----------------
+document.getElementById('missionName').textContent = meta.mission_name + ' — ' + meta.planner_name.toUpperCase();
+
+function fmtClock(offset_s){
+  const h = Math.floor(offset_s/3600).toString().padStart(2,'0');
+  const m = Math.floor((offset_s%3600)/60).toString().padStart(2,'0');
+  const s = Math.floor(offset_s%60).toString().padStart(2,'0');
+  return `T+${h}:${m}:${s}`;
+}
+
+function renderBadges(s){
+  const el = document.getElementById('statusBadges');
+  const battCls = s.battery_pct < 30 ? 'crit' : (s.battery_pct < 55 ? 'warn' : 'nominal');
+  const thermCls = (s.temperature_c > 45 || s.temperature_c < -15) ? 'warn' : (s.temperature_c>55||s.temperature_c<-25? 'crit':'nominal');
+  const commCls = s.comm_active ? 'nominal' : 'warn';
+  el.innerHTML = `
+    <div class="badge ${battCls}"><span class="dot ${battCls==='nominal'?'':battCls}"></span>BATTERY ${s.battery_pct.toFixed(0)}%</div>
+    <div class="badge ${thermCls}"><span class="dot ${thermCls==='nominal'?'':thermCls}"></span>THERMAL ${s.temperature_c.toFixed(0)}C</div>
+    <div class="badge ${commCls}"><span class="dot ${commCls==='nominal'?'':commCls}"></span>COMM ${s.comm_active?'ACTIVE':'IDLE'}</div>
+    <div class="badge ${s.is_anomaly?'crit':'nominal'}"><span class="dot ${s.is_anomaly?'crit':''}"></span>${s.is_anomaly? 'ANOMALY: '+s.anomaly_type.toUpperCase() : 'NO ANOMALY'}</div>
+  `;
+}
+
+// ---------------- orbit ring ----------------
+const period_s = (steps[steps.length-1].t_offset_s) / meta.n_orbits;
+function renderOrbitRing(s){
+  const svg = document.getElementById('orbitRing');
+  const cx=130, cy=130, r=95;
+  const angle = ((s.t_offset_s % period_s) / period_s) * 2*Math.PI - Math.PI/2;
+  const satX = cx + r*Math.cos(angle);
+  const satY = cy + r*Math.sin(angle);
+  const sunlit = !s.in_eclipse;
+  svg.innerHTML = `
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#232833" stroke-width="1.5" stroke-dasharray="3,4"/>
+    <circle cx="${cx}" cy="${cy}" r="34" fill="#152030" stroke="#2a3a4d"/>
+    <circle cx="${cx}" cy="${cy}" r="34" fill="url(#earthGrad)" opacity="0.85"/>
+    <defs>
+      <radialGradient id="earthGrad" cx="35%" cy="35%">
+        <stop offset="0%" stop-color="#2f6f8f"/>
+        <stop offset="100%" stop-color="#0c2233"/>
+      </radialGradient>
+    </defs>
+    <circle cx="${satX}" cy="${satY}" r="6" fill="${sunlit?'#F5A623':'#4A5568'}" stroke="${sunlit?'#fff3d6':'#1A1E27'}" stroke-width="1.5"/>
+    <text x="130" y="250" text-anchor="middle" font-size="10">${sunlit?'SUNLIT':'ECLIPSE'} · alt ${s.alt_km.toFixed(0)} km</text>
+  `;
+}
+
+// ---------------- ground track ----------------
+function lon2x(lon){ return (lon+180)/360*720; }
+function lat2y(lat){ return (90-lat)/180*360; }
+
+function renderGroundTrack(currentIndex){
+  const svg = document.getElementById('groundTrack');
+  let grid = '';
+  for(let g=-180; g<=180; g+=30){ grid += `<line x1="${lon2x(g)}" y1="0" x2="${lon2x(g)}" y2="360" stroke="#1A1E27"/>`; }
+  for(let g=-90; g<=90; g+=30){ grid += `<line x1="0" y1="${lat2y(g)}" x2="720" y2="${lat2y(g)}" stroke="#1A1E27"/>`; }
+  grid += `<line x1="0" y1="${lat2y(0)}" x2="720" y2="${lat2y(0)}" stroke="#2a3140" stroke-width="1.2"/>`;
+
+  // trailing ground track (last 200 points)
+  const trailStart = Math.max(0, currentIndex-200);
+  let trail = '';
+  let prevLon = null;
+  let seg = [];
+  for(let i=trailStart;i<=currentIndex;i++){
+    const p = steps[i];
+    if(prevLon!==null && Math.abs(p.lon-prevLon)>180){
+      trail += `<polyline points="${seg.join(' ')}" fill="none" stroke="#4FE0C2" stroke-width="1.6" opacity="0.55"/>`;
+      seg = [];
+    }
+    seg.push(`${lon2x(p.lon).toFixed(1)},${lat2y(p.lat).toFixed(1)}`);
+    prevLon = p.lon;
+  }
+  trail += `<polyline points="${seg.join(' ')}" fill="none" stroke="#4FE0C2" stroke-width="1.6" opacity="0.55"/>`;
+
+  let markers = '';
+  groundStations.forEach(g=>{
+    markers += `<rect x="${lon2x(g.lon)-3}" y="${lat2y(g.lat)-3}" width="6" height="6" fill="none" stroke="#4FE0C2" stroke-width="1.4" transform="rotate(45 ${lon2x(g.lon)} ${lat2y(g.lat)})"/>`;
+    markers += `<text x="${lon2x(g.lon)+7}" y="${lat2y(g.lat)+3}" font-size="9">${g.name}</text>`;
+  });
+  imagingTargets.forEach(g=>{
+    markers += `<circle cx="${lon2x(g.lon)}" cy="${lat2y(g.lat)}" r="3" fill="#9B8CFF"/>`;
+    markers += `<text x="${lon2x(g.lon)+6}" y="${lat2y(g.lat)-4}" font-size="9">${g.name.replace('Target-','')}</text>`;
+  });
+
+  const cur = steps[currentIndex];
+  const curMarker = `<circle cx="${lon2x(cur.lon)}" cy="${lat2y(cur.lat)}" r="4.5" fill="#F5A623" stroke="#fff3d6"/>`;
+
+  svg.innerHTML = grid + trail + markers + curMarker;
+}
+
+// ---------------- vitals gauges ----------------
+function arcPath(cx,cy,r,startAngle,endAngle){
+  const s = {x: cx+r*Math.cos(startAngle), y: cy+r*Math.sin(startAngle)};
+  const e = {x: cx+r*Math.cos(endAngle), y: cy+r*Math.sin(endAngle)};
+  const large = (endAngle-startAngle) > Math.PI ? 1 : 0;
+  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
+}
+function renderGauge(svgId, pct, color){
+  const svg = document.getElementById(svgId);
+  const cx=45, cy=45, r=36;
+  const start = -Math.PI*0.75, full = Math.PI*1.5;
+  const end = start + full*Math.min(1,Math.max(0,pct/100));
+  svg.innerHTML = `
+    <path d="${arcPath(cx,cy,r,start,start+full)}" stroke="#232833" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="${arcPath(cx,cy,r,start,end)}" stroke="${color}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  `;
+}
+
+// ---------------- telemetry chart ----------------
+let chart = null;
+try {
+  const ctx = document.getElementById('telemetryChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: steps.map(s=>s.t_offset_s),
+      datasets:[
+        {label:'Battery %', data: steps.map(s=>s.battery_pct), borderColor:'#4FE0C2', pointRadius:0, borderWidth:1.4, yAxisID:'y'},
+        {label:'Temperature C', data: steps.map(s=>s.temperature_c), borderColor:'#F5A623', pointRadius:0, borderWidth:1.4, yAxisID:'y1'},
+        {label:'Solar W', data: steps.map(s=>s.solar_w), borderColor:'#9B8CFF', pointRadius:0, borderWidth:1.1, yAxisID:'y1'},
+      ]
+    },
+    options:{
+      animation:false, responsive:true,
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{labels:{color:'#8890A0', font:{family:'IBM Plex Mono', size:10}}}},
+      scales:{
+        x:{display:false},
+        y:{position:'left', ticks:{color:'#8890A0', font:{size:9}}, grid:{color:'#1A1E27'}},
+        y1:{position:'right', ticks:{color:'#8890A0', font:{size:9}}, grid:{display:false}},
+      }
+    }
+  });
+} catch (e) {
+  console.warn('Chart.js failed to load (offline / CDN blocked) — telemetry chart panel will stay blank, everything else still works.', e);
+  const canvas = document.getElementById('telemetryChart');
+  const c2 = canvas.getContext('2d');
+  c2.fillStyle = '#8890A0'; c2.font = '12px monospace';
+  c2.fillText('Telemetry chart unavailable (Chart.js CDN not reachable offline)', 10, 20);
+}
+
+// ---------------- timeline canvas ----------------
+const tlCanvas = document.getElementById('timelineCanvas');
+function drawTimeline(){
+  const wrap = document.getElementById('timelineWrap');
+  const w = wrap.clientWidth; const h = 44;
+  tlCanvas.width = w; tlCanvas.height = h;
+  const tctx = tlCanvas.getContext('2d');
+  tctx.clearRect(0,0,w,h);
+  const n = steps.length;
+  for(let i=0;i<n;i++){
+    const x = Math.floor(i/n*w);
+    const x2 = Math.floor((i+1)/n*w)+1;
+    tctx.fillStyle = ACT_COLOR[steps[i].activity] || '#3A4150';
+    tctx.fillRect(x, 6, Math.max(1,x2-x), h-6);
+    if(steps[i].is_anomaly){
+      tctx.fillStyle = '#FF3B30';
+      tctx.fillRect(x, 0, Math.max(1,x2-x), 4);
+    }
+  }
+}
+document.getElementById('timelineWrap').addEventListener('click', (e)=>{
+  const rect = tlCanvas.getBoundingClientRect();
+  const frac = (e.clientX-rect.left)/rect.width;
+  setIndex(Math.round(frac*(steps.length-1)));
+});
+
+// ---------------- log ----------------
+let lastActivity = null;
+const logEl = document.getElementById('log');
+function pushLog(msg, cls){
+  const div = document.createElement('div');
+  div.className = 'entry'+(cls?(' '+cls):'');
+  div.innerHTML = `<span class="t">${fmtClock(steps[idx].t_offset_s)}</span>${msg}`;
+  logEl.prepend(div);
+  while(logEl.children.length>80){ logEl.removeChild(logEl.lastChild); }
+}
+
+// ---------------- summary panel ----------------
+document.getElementById('summary').innerHTML = `
+  <div class="stat-row"><span class="k">Planner</span><span class="mono">${meta.planner_name}</span></div>
+  <div class="stat-row"><span class="k">Orbits simulated</span><span class="mono">${meta.n_orbits}</span></div>
+  <div class="stat-row"><span class="k">Images captured</span><span class="mono">${meta.total_images}</span></div>
+  <div class="stat-row"><span class="k">Data downlinked</span><span class="mono">${meta.total_downlink_mb} MB</span></div>
+  <div class="stat-row"><span class="k">Mission reward</span><span class="mono">${meta.total_reward}</span></div>
+  <div class="stat-row"><span class="k">Constraint violations</span><span class="mono">${meta.total_violations}</span></div>
+`;
+
+// ---------------- main render / update ----------------
+function setIndex(i){
+  idx = Math.max(0, Math.min(steps.length-1, i));
+  const s = steps[idx];
+
+  document.getElementById('clockDisplay').textContent = fmtClock(s.t_offset_s);
+  document.getElementById('scrubber').value = idx;
+  document.getElementById('scrubLabel').textContent = `step ${idx} / ${steps.length-1}`;
+
+  renderBadges(s);
+  renderOrbitRing(s);
+  renderGroundTrack(idx);
+  renderGauge('gaugeBattery', s.battery_pct, s.battery_pct<30?'#FF6B5D':'#4FE0C2');
+  renderGauge('gaugeStorage', s.memory_pct, s.memory_pct>85?'#F5A623':'#9B8CFF');
+
+  document.getElementById('valBattery').textContent = s.battery_pct.toFixed(1)+'%';
+  document.getElementById('valStorage').textContent = s.memory_pct.toFixed(1)+'%';
+  document.getElementById('valTemp').textContent = s.temperature_c.toFixed(1)+' C';
+  document.getElementById('valSolar').textContent = s.solar_w.toFixed(1)+' W';
+  document.getElementById('valActivity').textContent = s.activity;
+  document.getElementById('valComm').textContent = s.comm_active ? 'DOWNLINKING' : '—';
+  document.getElementById('valEclipse').textContent = s.in_eclipse ? 'YES' : 'NO';
+
+  const wrap = document.getElementById('timelineWrap');
+  const frac = idx/(steps.length-1);
+  document.getElementById('timelinePlayhead').style.left = (frac*wrap.clientWidth)+'px';
+
+  if(chart){
+    chart.options.plugins.tooltip = chart.options.plugins.tooltip || {};
+  }  if(s.activity !== lastActivity){
+    const cls = s.activity==='IMAGE'||s.activity==='DOWNLINK' ? 'ai' : '';
+    pushLog(`AI selected <b>${s.activity}</b>${s.fault? ' (fault: '+s.fault.slice(0,60)+'...)':''}`, cls);
+    lastActivity = s.activity;
+  }
+  if(s.is_anomaly && (idx===0 || !steps[idx-1].is_anomaly)){
+    pushLog(`ANOMALY DETECTED — ${s.anomaly_type}`, 'anomaly');
+  }
+}
+
+document.getElementById('scrubber').max = steps.length-1;
+document.getElementById('scrubber').addEventListener('input', (e)=> setIndex(parseInt(e.target.value)));
+
+const btnPlay = document.getElementById('btnPlay');
+btnPlay.addEventListener('click', ()=>{
+  playing = !playing;
+  btnPlay.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
+  if(playing){
+    timer = setInterval(()=>{
+      const speed = parseInt(document.getElementById('speedSelect').value);
+      if(idx >= steps.length-1){ idx = 0; }
+      setIndex(idx+speed);
+    }, 80);
+  } else {
+    clearInterval(timer);
+  }
+});
+
+window.addEventListener('resize', ()=>{ drawTimeline(); setIndex(idx); });
+
+drawTimeline();
+setIndex(0);
+// seed the log with a mission-start entry
+pushLog(`Mission timeline loaded — ${steps.length} steps, planner: ${meta.planner_name}`, '');
+</script>
+</body>
+</html>

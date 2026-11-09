@@ -1,0 +1,20 @@
+# Core
+numpy>=1.24
+sgp4>=2.23              # TLE/SGP4 propagation (Layer 1)
+matplotlib>=3.7          # ground track / experiment plots
+
+# Mission planning (Layer 3)
+pulp>=2.7                # integer programming scheduler
+
+# Telemetry & AI (Layer 4/6)
+pandas>=2.0
+scikit-learn>=1.3        # Isolation Forest, PCA
+
+# Testing
+pytest>=7.4
+
+# Optional extensions (not required by anything in this repo today,
+# but natural next steps — see README "Suggested next steps"):
+# gymnasium
+# stable-baselines3      # deeper RL policy than the tabular Q-learner
+# torch                  # nonlinear autoencoder for anomaly detection

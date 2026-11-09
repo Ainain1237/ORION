@@ -1,0 +1,9 @@
+fault,response,images_captured,data_downlinked_mb,violations,reward
+battery_degradation,No FDIR (oblivious),38,285.0,0,437.0
+battery_degradation,Rule-based FDIR,38,285.0,0,437.0
+battery_degradation,RL planner alone,38,1170.0,0,614.0
+battery_degradation,RL + rule-based safety layer,38,1170.0,0,614.0
+thermal_anomaly,No FDIR (oblivious),24,285.0,14,87.0
+thermal_anomaly,Rule-based FDIR,24,285.0,14,87.0
+thermal_anomaly,RL planner alone,20,1170.0,62,-496.0
+thermal_anomaly,RL + rule-based safety layer,20,1170.0,18,164.0
