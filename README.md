@@ -174,7 +174,7 @@ in safety-critical autonomy.
   an autoencoder; swapping in a nonlinear one (small MLP) is a natural
   next step using the identical evaluation harness.
 
-## Suggested next steps if you want to go further
+## Next steps: 
 
 - Add J2 perturbation to `TwoBodyPropagator` and quantify the drift vs
   SGP4 over a multi-day propagation.
