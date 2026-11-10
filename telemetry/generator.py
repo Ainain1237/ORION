@@ -11,6 +11,8 @@ a clean signal.
 
 from __future__ import annotations
 
+import zlib
+
 import numpy as np
 import pandas as pd
 
@@ -52,7 +54,9 @@ def generate_telemetry(states: list[SatelliteState], seed: int = 7,
 
         voltage = _battery_voltage(s.battery_pct, current_a)
 
-        reaction_wheel_speed = 3000 + 500 * np.sin(hash(s.activity) % 100)  # activity-coupled baseline
+        # activity-coupled baseline; crc32, not hash(), because Python randomises
+        # str hashes per process and the telemetry must be reproducible
+        reaction_wheel_speed = 3000 + 500 * np.sin(zlib.crc32(s.activity.encode()) % 100)
 
         row = dict(
             timestamp=s.timestamp,
