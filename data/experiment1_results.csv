@@ -1,5 +1,5 @@
 planner,reward,images_captured,data_downlinked_mb,energy_used_wh,violations,plan_time_s
-Greedy,437.0,38,285.0,0.0,0,0.005169868469238281
-Genetic Algorithm,452.0,32,660.0,0.0,0,3.9984400272369385
-Integer Programming,614.0,38,1170.0,0.0,0,0.1236419677734375
-Reinforcement Learning (Q-learning),614.0,38,1170.0,0.0,0,2.11276912689209
+Greedy,437.0,38,285.0,0.0,0,0.005258321762084961
+Genetic Algorithm,452.0,32,660.0,0.0,0,3.9956610202789307
+Integer Programming,614.0,38,1170.0,0.0,0,0.12566709518432617
+Reinforcement Learning (Q-learning),614.0,38,1170.0,0.0,0,2.0993409156799316
